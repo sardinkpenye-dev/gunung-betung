@@ -6,8 +6,8 @@
     <title>Gunung Betung | Eksplorasi Geologi & Keindahan Alam</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>">
     
-    <!-- Model Viewer Library -->
-    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <!-- Model Viewer Library - versi terbaru -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
     
     <style>
         :root {
@@ -49,7 +49,6 @@
             user-select: none;
         }
 
-        /* Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -127,7 +126,6 @@
             font-weight: 600;
         }
 
-        /* Floating button mobile */
         .floating-nav {
             display: none;
             position: fixed;
@@ -151,7 +149,7 @@
             transform: scale(0.9);
         }
 
-        /* Pages container */
+        /* Pages */
         .pages {
             position: relative;
             width: 100%;
@@ -168,12 +166,14 @@
             transition: opacity 0.7s ease, transform 0.7s ease;
             transform: translateY(20px);
             will-change: transform, opacity;
+            display: none;
         }
         .page.active {
             position: relative;
             opacity: 1;
             pointer-events: all;
             transform: translateY(0);
+            display: block;
         }
         .page.exit-up {
             opacity: 0;
@@ -181,7 +181,7 @@
             transition: 0.5s ease-in;
         }
 
-        /* Halaman 1 - Hero */
+        /* Halaman 1 */
         .hero-section {
             position: relative;
             width: 100%;
@@ -249,7 +249,6 @@
             50% { transform: translateX(-50%) translateY(-15px); }
         }
 
-        /* Content sections */
         .content-section {
             max-width: 900px;
             margin: 0 auto;
@@ -320,7 +319,6 @@
             font-size: 1.2rem;
         }
 
-        /* Team Cards */
         .team-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -383,6 +381,7 @@
             height: 100vh;
             width: 100%;
             background: var(--bg-primary);
+            position: relative;
         }
         .model-viewer-wrapper {
             flex: 1;
@@ -390,12 +389,45 @@
             position: relative;
             min-height: 0;
             background: #0a0f0a;
+            overflow: hidden;
         }
         model-viewer {
             width: 100%;
             height: 100%;
+            display: block;
             --poster-color: transparent;
+            --progress-bar-color: #5a8a5a;
+            --progress-mask: #1a2a1a;
         }
+        
+        /* Loading indicator */
+        .model-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--accent-glow);
+            font-size: 1.2rem;
+            z-index: 5;
+            text-align: center;
+            pointer-events: none;
+        }
+        .model-loading.hidden {
+            display: none;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         .controls-bar {
             display: flex;
             gap: 10px;
@@ -491,6 +523,8 @@
             width: 100%;
             border-radius: var(--radius-sm);
             margin-bottom: 12px;
+            min-height: 200px;
+            background: #1a2a1a;
         }
         .popup-close {
             position: absolute;
@@ -515,6 +549,24 @@
         .popup-desc {
             color: var(--text-secondary);
             font-size: 0.9rem;
+        }
+
+        /* Error message */
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff6b6b;
+            text-align: center;
+            z-index: 10;
+            background: rgba(0,0,0,0.8);
+            padding: 20px 30px;
+            border-radius: 12px;
+            display: none;
+        }
+        .error-message.show {
+            display: block;
         }
 
         @media (max-width: 768px) {
@@ -544,6 +596,10 @@
                 grid-template-columns: 1fr 1fr;
                 gap: 12px;
             }
+            .mode-btn {
+                padding: 10px 16px;
+                font-size: 0.8rem;
+            }
         }
         @media (max-width: 480px) {
             .nav-links {
@@ -561,7 +617,6 @@
 </head>
 <body>
 
-    <!-- Navbar -->
     <nav class="navbar" id="navbar">
         <div class="nav-brand">🏔️ Gunung Betung</div>
         <div class="nav-links">
@@ -570,16 +625,13 @@
         </div>
     </nav>
 
-    <!-- Floating button for mobile -->
     <button class="floating-nav" id="floatingNav" onclick="toggleMobileNav()" aria-label="Navigasi">
         🧭
     </button>
 
-    <!-- Pages -->
     <div class="pages">
-        <!-- PAGE 1: Scroll Storytelling -->
+        <!-- PAGE 1 -->
         <div class="page active" id="page1">
-            <!-- Hero Section -->
             <section class="hero-section" id="hero">
                 <div class="hero-bg" id="heroBg"></div>
                 <div class="hero-overlay"></div>
@@ -590,7 +642,6 @@
                 <div class="scroll-indicator">↓ Jelajahi</div>
             </section>
 
-            <!-- Story Content -->
             <div class="content-section" id="storyContent">
                 <h2 class="section-title">Keterbentukan Gunung Betung</h2>
                 <div class="text-block reveal">
@@ -678,20 +729,37 @@
         <div class="page" id="page2">
             <div class="page-3d-container">
                 <div class="model-viewer-wrapper" id="modelViewerWrapper">
+                    <!-- Loading indicator -->
+                    <div class="model-loading" id="modelLoading">
+                        <div class="loading-spinner"></div>
+                        <div>Memuat Model 3D...</div>
+                    </div>
+                    
+                    <!-- Error message -->
+                    <div class="error-message" id="modelError">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
+                        <div>Gagal memuat model 3D</div>
+                        <div style="font-size: 0.8rem; margin-top: 8px; color: #aaa;">Pastikan file .glb ada di folder assets/</div>
+                    </div>
+                    
                     <model-viewer 
                         id="model3d"
                         src="assets/betung_satellite.glb"
                         camera-controls
                         touch-action="pan-y"
-                        camera-orbit="45deg 75deg auto"
-                        min-camera-orbit="auto auto 1.5m"
-                        max-camera-orbit="auto auto 8m"
+                        camera-orbit="45deg 75deg 3m"
+                        min-camera-orbit="auto auto 1m"
+                        max-camera-orbit="auto auto 10m"
                         interpolation-decay="200"
-                        style="width: 100%; height: 100%;"
                         exposure="1.2"
                         shadow-intensity="0.8"
                         environment-image="neutral"
+                        loading="eager"
+                        reveal="auto"
+                        autoplay
+                        animation-name=""
                     >
+                        <div slot="progress-bar" style="display: none;"></div>
                     </model-viewer>
                 </div>
                 <div class="controls-bar" id="modeControls">
@@ -699,9 +767,7 @@
                     <button class="mode-btn" onclick="switchModel('geology')">🌋 Geologi</button>
                     <button class="mode-btn" onclick="switchModel('morphometry')">📐 Morfometri</button>
                 </div>
-                <div class="hotspot-list" id="hotspotList">
-                    <!-- Hotspot chips generated by JS -->
-                </div>
+                <div class="hotspot-list" id="hotspotList"></div>
             </div>
         </div>
     </div>
@@ -738,40 +804,116 @@
                 { name: "Pos pendaftaran", lat: -5.408159, lng: 105.143373, position: { x: -5, y: 0.2, z: -6 } }
             ];
 
-            // State
             let currentPage = 0;
             let currentModel = 'satellite';
+            
             const modelViewer = document.getElementById('model3d');
+            const modelLoading = document.getElementById('modelLoading');
+            const modelError = document.getElementById('modelError');
             const popupOverlay = document.getElementById('popupOverlay');
             const popupImg = document.getElementById('popupImg');
             const popupTitle = document.getElementById('popupTitle');
             const popupDesc = document.getElementById('popupDesc');
 
+            // === MODEL VIEWER EVENT LISTENERS ===
+            if (modelViewer) {
+                // Loading started
+                modelViewer.addEventListener('load', function() {
+                    if (modelLoading) modelLoading.classList.add('hidden');
+                    if (modelError) modelError.classList.remove('show');
+                    console.log('✅ Model 3D berhasil dimuat');
+                });
+                
+                // Loading progress
+                modelViewer.addEventListener('progress', function(event) {
+                    const progress = event.detail.totalProgress;
+                    if (progress >= 1) {
+                        if (modelLoading) modelLoading.classList.add('hidden');
+                    }
+                });
+                
+                // Error handling
+                modelViewer.addEventListener('error', function(event) {
+                    console.error('❌ Error loading model:', event.detail);
+                    if (modelLoading) modelLoading.classList.add('hidden');
+                    if (modelError) modelError.classList.add('show');
+                });
+                
+                // Model started loading
+                modelViewer.addEventListener('model-visibility', function(event) {
+                    if (event.detail.visible) {
+                        setTimeout(() => {
+                            if (modelLoading) modelLoading.classList.add('hidden');
+                        }, 500);
+                    }
+                });
+            }
+
             // === PAGE SWITCHING ===
             window.switchPage = function(index) {
                 if (index === currentPage) return;
+                
                 const pages = document.querySelectorAll('.page');
                 const navLinks = document.querySelectorAll('.nav-link');
                 
-                pages[currentPage].classList.add('exit-up');
+                // Exit current page
+                if (pages[currentPage]) {
+                    pages[currentPage].classList.add('exit-up');
+                }
+                
                 setTimeout(() => {
-                    pages[currentPage].classList.remove('active', 'exit-up');
-                    pages[index].classList.add('active');
+                    // Deactivate all pages
+                    pages.forEach(page => {
+                        page.classList.remove('active', 'exit-up');
+                    });
+                    
+                    // Activate target page
+                    if (pages[index]) {
+                        pages[index].classList.add('active');
+                    }
+                    
                     currentPage = index;
                     
+                    // Update nav
                     navLinks.forEach((link, i) => {
                         link.classList.toggle('active', i === index);
                     });
                     
+                    // If switching to page 2, initialize 3D
                     if (index === 1) {
-                        generateHotspots();
+                        setTimeout(() => {
+                            generateHotspots();
+                            refreshModelViewer();
+                        }, 100);
                     }
                     
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }, 300);
             };
 
-            // === NAVBAR SCROLL EFFECT ===
+            // === REFRESH MODEL VIEWER ===
+            function refreshModelViewer() {
+                if (!modelViewer) return;
+                
+                // Force model viewer to recalculate
+                const currentSrc = modelViewer.src;
+                if (currentSrc) {
+                    // Small trick to refresh
+                    modelViewer.dismissPoster();
+                    
+                    // Ensure loading indicator shows
+                    if (modelLoading) modelLoading.classList.remove('hidden');
+                    if (modelError) modelError.classList.remove('show');
+                    
+                    // Reload if needed
+                    const timestamp = new Date().getTime();
+                    if (currentSrc.includes('?')) {
+                        modelViewer.src = currentSrc.split('?')[0] + '?t=' + timestamp;
+                    }
+                }
+            }
+
+            // === NAVBAR SCROLL ===
             const navbar = document.getElementById('navbar');
             window.addEventListener('scroll', () => {
                 if (currentPage === 0) {
@@ -781,7 +923,7 @@
                 }
             });
 
-            // === PARALLAX HERO ===
+            // === PARALLAX ===
             const heroBg = document.getElementById('heroBg');
             const heroContent = document.getElementById('heroContent');
             window.addEventListener('scroll', () => {
@@ -821,7 +963,11 @@
                 currentModel = mode;
                 const buttons = document.querySelectorAll('.mode-btn');
                 buttons.forEach(btn => btn.classList.remove('active-mode'));
-                event.target.classList.add('active-mode');
+                
+                // Add active class to clicked button
+                if (event && event.target) {
+                    event.target.classList.add('active-mode');
+                }
                 
                 let src = '';
                 switch(mode) {
@@ -829,8 +975,16 @@
                     case 'geology': src = 'assets/betung_geology.glb'; break;
                     case 'morphometry': src = 'assets/betung_morphometry.glb'; break;
                 }
+                
                 if (modelViewer && src) {
+                    // Show loading
+                    if (modelLoading) modelLoading.classList.remove('hidden');
+                    if (modelError) modelError.classList.remove('show');
+                    
+                    // Set new source
                     modelViewer.src = src;
+                    
+                    console.log('🔄 Switching to:', mode, '→', src);
                 }
             };
 
@@ -838,6 +992,7 @@
             function generateHotspots() {
                 const hotspotList = document.getElementById('hotspotList');
                 if (!hotspotList) return;
+                
                 hotspotList.innerHTML = '';
                 points.forEach((point, index) => {
                     const chip = document.createElement('button');
@@ -846,6 +1001,8 @@
                     chip.addEventListener('click', () => openPopup(point));
                     hotspotList.appendChild(chip);
                 });
+                
+                console.log('📍 Hotspots generated:', points.length, 'points');
             }
 
             // === POPUP 360 ===
@@ -858,8 +1015,16 @@
                 
                 popupImg.src = imgSrc;
                 popupImg.onerror = function() {
-                    // Fallback if image doesn't exist
-                    popupImg.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="%231a2a1a"><rect width="400" height="300"/><text x="200" y="150" text-anchor="middle" fill="%23888" font-size="20">360° View</text><text x="200" y="180" text-anchor="middle" fill="%23666" font-size="14">' + point.name + '</text></svg>');
+                    // Create a nice fallback SVG
+                    const fallbackSvg = 'data:image/svg+xml,' + encodeURIComponent(
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="%231a2a1a">' +
+                        '<rect width="400" height="300"/>' +
+                        '<text x="200" y="140" text-anchor="middle" fill="%235a8a5a" font-size="22">🏔️ 360° Panorama</text>' +
+                        '<text x="200" y="170" text-anchor="middle" fill="%23888" font-size="14">' + point.name + '</text>' +
+                        '<text x="200" y="200" text-anchor="middle" fill="%23666" font-size="12">Gambar tidak tersedia</text>' +
+                        '</svg>'
+                    );
+                    popupImg.src = fallbackSvg;
                 };
                 
                 popupTitle.textContent = point.name;
@@ -867,7 +1032,7 @@
                 if (point.name === 'Pos pendaftaran') {
                     popupDesc.textContent = 'Lokasi pos pendaftaran resmi untuk pendakian Gunung Betung. Semua pendaki wajib mendaftar di sini sebelum memulai perjalanan. Tersedia informasi jalur, peta, dan petugas yang siap membantu.';
                 } else {
-                    popupDesc.textContent = 'Titik koordinat: ' + point.lat.toFixed(4) + ', ' + point.lng.toFixed(4) + ' | Posisi 3D: (' + point.position.x + ', ' + point.position.y + ', ' + point.position.z + ')';
+                    popupDesc.textContent = 'Titik lokasi: ' + point.name;
                 }
                 
                 popupOverlay.classList.add('show');
@@ -881,7 +1046,6 @@
                 }
             };
 
-            // Close popup on overlay click
             if (popupOverlay) {
                 popupOverlay.addEventListener('click', function(e) {
                     if (e.target === popupOverlay) {
@@ -894,31 +1058,40 @@
             window.toggleMobileNav = function() {
                 const navLinks = document.querySelector('.nav-links');
                 if (navLinks) {
-                    navLinks.style.display = navLinks.style.display === 'flex' ? 'none' : 'flex';
+                    const currentDisplay = window.getComputedStyle(navLinks).display;
+                    navLinks.style.display = currentDisplay === 'flex' ? 'none' : 'flex';
                 }
             };
 
-            // === KEYBOARD NAVIGATION ===
+            // === KEYBOARD ===
             document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    closePopup();
-                }
+                if (e.key === 'Escape') closePopup();
                 if (e.key === '1') switchPage(0);
                 if (e.key === '2') switchPage(1);
             });
 
-            // === INITIAL SETUP ===
-            navbar.classList.add('scrolled'); // Start scrolled for better initial look
+            // === INIT ===
+            navbar.classList.add('scrolled');
             setTimeout(() => {
                 if (window.scrollY < 50) navbar.classList.remove('scrolled');
             }, 100);
+            
+            // Preload model viewer
+            if (modelViewer && modelLoading) {
+                modelLoading.classList.remove('hidden');
+            }
+            
+            // Check if model viewer loaded correctly
+            setTimeout(() => {
+                if (modelViewer && modelLoading && !modelViewer.loaded) {
+                    // Still loading after 5 seconds
+                    console.log('⏳ Model masih loading...');
+                }
+            }, 5000);
 
-            // Generate hotspots if page 2 is active initially (it's not, but for safety)
-            // They will be generated when switching to page 2
-
-            console.log('🏔️ Gunung Betung - Website Interaktif Siap');
-            console.log('📱 Mobile Friendly | 🖥️ Desktop Ready | 🌐 GitHub Pages Compatible');
-            console.log('📍 Total Hotspot Points:', points.length);
+            console.log('🏔️ Gunung Betung - Siap!');
+            console.log('📱 Mobile Friendly | 🖥️ Desktop | 🌐 GitHub Pages');
+            console.log('💡 Tips: Jika model tidak muncul, pastikan file .glb ada di folder assets/');
         })();
     </script>
 </body>
