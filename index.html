@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gunung Betung | Geologi & Eksplorasi</title>
+    
+    <!-- Library Eksternal -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide-static@0.1.0/font/lucide.min.css"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=Playfair+Display:wght@700;900&display=swap');
+
+        :root {
+            --primary: #1a2e1a;
+            --accent: #d4ff00;
+            --text-light: #f8fafc;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #050505;
+            color: var(--text-light);
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        h1, h2, .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* Navigation Style */
+        .nav-link {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after { width: 100%; }
+
+        /* Hero Section Parallax */
+        #hero {
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 120%; /* Extra height for parallax */
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(5,5,5,1)), 
+                        url('gunung_betung_hero.png') center/cover no-repeat;
+            z-index: -1;
+            will-change: transform;
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Section Layouts */
+        .content-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 100px 0;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+
+        /* 3D Container */
+        #viewer-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            background: #000;
+        }
+
+        /* Hotspot Styles */
+        .hotspot {
+            width: 20px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+            position: absolute;
+            box-shadow: 0 0 20px var(--accent);
+            transition: transform 0.3s ease;
+        }
+        .hotspot:hover { transform: scale(1.5); }
+        .hotspot-label {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .hotspot:hover .hotspot-label { opacity: 1; }
+
+        /* Panorama Overlay */
+        #panorama-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+        }
+        #pano-canvas { width: 100%; height: 100%; }
+
+        .btn-mode {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-mode.active {
+            background: var(--accent);
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Nav -->
+    <nav class="fixed top-0 w-full z-50 p-6 flex justify-between items-center bg-transparent transition-all duration-500" id="main-nav">
+        <div class="text-2xl font-black uppercase tracking-tighter text-white">Betung<span class="text-[#d4ff00]">3D</span></div>
+        <div class="hidden md:flex space-x-10 font-semibold text-sm uppercase tracking-widest">
+            <a href="#" onclick="showPage('page-explore')" class="nav-link">Eksplorasi</a>
+            <a href="#" onclick="showPage('page-3d')" class="nav-link">Peta 3D</a>
+            <a href="#" onclick="showPage('page-info')" class="nav-link">Tim Kreatif</a>
+        </div>
+        <div class="md:hidden">
+            <button onclick="toggleMobileMenu()" class="text-white">☰</button>
+        </div>
+    </nav>
+
+    <!-- PAGE 1: EXPLORATION -->
+    <main id="page-explore" class="page-content">
+        <!-- Hero Section -->
+        <section id="hero" class="flex items-center justify-center text-center px-4">
+            <div class="hero-bg" id="hero-bg"></div>
+            <div class="z-10" id="hero-content">
+                <h1 class="text-6xl md:text-9xl font-black mb-4 leading-none tracking-tighter uppercase">Gunung Betung</h1>
+                <p class="text-lg md:text-2xl font-light text-gray-300 max-w-2xl mx-auto italic">"Eksplorasi Geologi dan Keindahan Alam Lampung"</p>
+                <div class="mt-12 animate-bounce">
+                    <span class="text-xs uppercase tracking-widest text-gray-500">Scroll ke bawah</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sejarah / Keterbentukan -->
+        <section class="content-section container mx-auto px-6 grid md:grid-cols-2 gap-12 items-center" id="section-sejarah">
+            <div>
+                <h2 class="text-4xl md:text-5xl font-bold mb-8 text-[#d4ff00]">Keterbentukan Gunung</h2>
+                <div class="space-y-6 text-gray-300 leading-relaxed text-lg">
+                    <p>Gunung Betung terbentuk dari proses alam yang terjadi sangat lama di dalam bumi. Gunung ini masih terlihat jelas bentuknya seperti kerucut, menandakan bahwa jejak pembentukannya masih terjaga hingga sekarang.</p>
+                    <p>Dari bentuk dan kondisi sekitarnya, Gunung Betung kemungkinan tidak berdiri sendiri, tetapi menjadi bagian dari rangkaian gunung lain di wilayah Busur Sunda.</p>
+                </div>
+            </div>
+            <div class="relative group overflow-hidden rounded-2xl shadow-2xl">
+                <img src="geologi_1.png" alt="Geologi Betung" class="w-full transition-transform duration-700 group-hover:scale-110">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+            </div>
+        </section>
+
+        <!-- Geologi Section -->
+        <section class="content-section bg-[#0a0a0a]" id="section-geologi">
+            <div class="container mx-auto px-6">
+                <h2 class="text-4xl md:text-6xl font-bold mb-16 text-center">Geologi Gunung Betung</h2>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- Pola Aliran -->
+                    <div class="glass p-8 rounded-3xl">
+                        <div class="text-4xl mb-4">🌊</div>
+                        <h3 class="text-xl font-bold mb-4 uppercase tracking-wider text-[#d4ff00]">Pola Aliran Sungai</h3>
+                        <p class="text-gray-400">Pola aliran sungai di sekitar Gunung Betung adalah radial, yaitu sungai mengalir menyebar dari satu titik pusat ke segala arah mengikuti lereng gunung.</p>
+                    </div>
+                    <!-- Pola Kelurusan -->
+                    <div class="glass p-8 rounded-3xl">
+                        <div class="text-4xl mb-4">📏</div>
+                        <h3 class="text-xl font-bold mb-4 uppercase tracking-wider text-[#d4ff00]">Pola Kelurusan</h3>
+                        <p class="text-gray-400">Pola kelurusan cenderung baratlaut–tenggara (NW–SE), mengikuti arah struktur regional yang dipengaruhi oleh Sesar Semangko.</p>
+                    </div>
+                    <!-- Tahapan Bentang Alam -->
+                    <div class="glass p-8 rounded-3xl">
+                        <div class="text-4xl mb-4">⛰️</div>
+                        <h3 class="text-xl font-bold mb-4 uppercase tracking-wider text-[#d4ff00]">Bentang Alam</h3>
+                        <p class="text-gray-400">Termasuk tahap muda hingga dewasa, karena bentuk gunung masih jelas tetapi sudah mulai mengalami erosi di beberapa bagian lereng.</p>
+                    </div>
+                </div>
+
+                <div class="mt-12 grid md:grid-cols-2 gap-8">
+                    <div class="glass p-8 rounded-3xl border-l-4 border-[#d4ff00]">
+                        <h3 class="text-xl font-bold mb-4">🌍 Pengaruh Struktur (Sesar)</h3>
+                        <p class="text-gray-400">Sesar Semangko (segmen barat) mengontrol arah lembah, pola sungai, dan bentuk topografi di sekitar gunung.</p>
+                    </div>
+                    <div class="glass p-8 rounded-3xl border-l-4 border-[#d4ff00]">
+                        <h3 class="text-xl font-bold mb-4">💎 Tekstur & Struktur Batuan</h3>
+                        <ul class="text-gray-400 space-y-2">
+                            <li>• Sieve texture, Zoning, Glomerocryst</li>
+                            <li>• Amigdaloidal & Ofitik</li>
+                            <li class="mt-2 text-white italic">Menunjukkan proses magma yang kompleks.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Potensi Wisata -->
+        <section class="content-section" id="section-wisata">
+            <div class="container mx-auto px-6">
+                <h2 class="text-4xl md:text-5xl font-bold mb-16 text-right">Potensi Pariwisata</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Wisata 1 -->
+                    <div class="group relative h-96 overflow-hidden rounded-2xl">
+                        <img src="wisata_1.png" class="absolute inset-0 w-full h-full object-cover transition duration-500 group-hover:scale-110">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent p-6 flex flex-col justify-end">
+                            <h3 class="font-bold text-xl mb-2 text-[#d4ff00]">Pendakian</h3>
+                            <p class="text-xs text-gray-300">Ramah pendaki pemula, ketinggian 1.240 mdpl.</p>
+                        </div>
+                    </div>
+                    <!-- Wisata 2 -->
+                    <div class="group relative h-96 overflow-hidden rounded-2xl">
+                        <img src="wisata_2.png" class="absolute inset-0 w-full h-full object-cover transition duration-500 group-hover:scale-110">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent p-6 flex flex-col justify-end">
+                            <h3 class="font-bold text-xl mb-2 text-[#d4ff00]">Air Terjun</h3>
+                            <p class="text-xs text-gray-300">Tersebar di lereng dengan pemandangan asri.</p>
+                        </div>
+                    </div>
+                    <!-- Wisata 3 -->
+                    <div class="group relative h-96 overflow-hidden rounded-2xl">
+                        <img src="wisata_3.png" class="absolute inset-0 w-full h-full object-cover transition duration-500 group-hover:scale-110">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent p-6 flex flex-col justify-end">
+                            <h3 class="font-bold text-xl mb-2 text-[#d4ff00]">Hutan Tropis</h3>
+                            <p class="text-xs text-gray-300">Kawasan Tahura Wan Abdul Rachman.</p>
+                        </div>
+                    </div>
+                    <!-- Wisata 4 -->
+                    <div class="group relative h-96 overflow-hidden rounded-2xl">
+                        <img src="wisata_4.png" class="absolute inset-0 w-full h-full object-cover transition duration-500 group-hover:scale-110">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent p-6 flex flex-col justify-end">
+                            <h3 class="font-bold text-xl mb-2 text-[#d4ff00]">Camping</h3>
+                            <p class="text-xs text-gray-300">Suasana tenang untuk healing keluarga.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- PAGE 2: 3D EXPLORER -->
+    <main id="page-3d" class="page-content hidden">
+        <div id="viewer-container">
+            <!-- UI Controls -->
+            <div class="absolute top-24 left-6 z-10 space-y-4">
+                <div class="glass p-4 rounded-xl">
+                    <h3 class="text-sm font-bold uppercase mb-4 text-[#d4ff00]">Mode Tampilan</h3>
+                    <div class="flex flex-col space-y-2">
+                        <button onclick="set3DMode('satelit')" class="btn-mode active" id="btn-satelit">Satelit</button>
+                        <button onclick="set3DMode('geologi')" class="btn-mode" id="btn-geologi">Peta Geologi</button>
+                        <button onclick="set3DMode('morfometri')" class="btn-mode" id="btn-morfometri">Morfometri</button>
+                    </div>
+                </div>
+
+                <div id="legenda-container" class="glass p-4 rounded-xl hidden max-w-xs">
+                    <h3 class="text-xs font-bold mb-2">Legenda Geologi</h3>
+                    <div class="space-y-1 text-[10px]">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 bg-red-600 rounded-full"></span>
+                            <span>Andesit Betung (Qhv)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                            <span>Tuf Lapili</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 bg-orange-400 rounded-full"></span>
+                            <span>Breksi Gunungapi</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interaction Info -->
+            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-xs text-center">
+                Klik pada <span class="text-[#d4ff00] font-bold">titik kuning</span> untuk melihat View 360°
+            </div>
+            
+            <div id="three-canvas-container" class="w-full h-full"></div>
+        </div>
+    </main>
+
+    <!-- PAGE 3: TIM KREATIF -->
+    <main id="page-info" class="page-content hidden pt-32 min-h-screen">
+        <div class="container mx-auto px-6">
+            <h2 class="text-5xl font-black mb-16 text-center uppercase">Tim Pengembang</h2>
+            <div class="grid md:grid-cols-3 gap-12">
+                <!-- Choper -->
+                <div class="glass p-8 rounded-3xl text-center flex flex-col items-center">
+                    <div class="w-32 h-32 rounded-full border-4 border-[#d4ff00] mb-6 overflow-hidden">
+                        <img src="profil_1.png" alt="Christopher" class="w-full h-full object-cover">
+                    </div>
+                    <h3 class="text-xl font-bold">Christopher Putra P</h3>
+                    <p class="text-[#d4ff00] text-sm mb-4">Web Developer & UI/UX</p>
+                    <a href="https://www.instagram.com/choper_risto?igsh=c2xtNnRqMGJzejRm" target="_blank" class="px-6 py-2 bg-white/10 hover:bg-[#d4ff00] hover:text-black rounded-full transition-all text-xs font-bold">Instagram</a>
+                </div>
+                <!-- Dink -->
+                <div class="glass p-8 rounded-3xl text-center flex flex-col items-center">
+                    <div class="w-32 h-32 rounded-full border-4 border-[#d4ff00] mb-6 overflow-hidden">
+                        <img src="profil_2.png" alt="Abdul Muarifudin" class="w-full h-full object-cover">
+                    </div>
+                    <h3 class="text-xl font-bold">Abdul Muarifudin</h3>
+                    <p class="text-[#d4ff00] text-sm mb-4">GIS & 3D Design</p>
+                    <a href="https://www.instagram.com/d.dinkkk009?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" class="px-6 py-2 bg-white/10 hover:bg-[#d4ff00] hover:text-black rounded-full transition-all text-xs font-bold">Instagram</a>
+                </div>
+                <!-- Dva -->
+                <div class="glass p-8 rounded-3xl text-center flex flex-col items-center">
+                    <div class="w-32 h-32 rounded-full border-4 border-[#d4ff00] mb-6 overflow-hidden">
+                        <img src="profil_3.png" alt="Dipa Anggraini" class="w-full h-full object-cover">
+                    </div>
+                    <h3 class="text-xl font-bold">Dipa Anggraini</h3>
+                    <p class="text-[#d4ff00] text-sm mb-4">Data Analyst</p>
+                    <a href="https://www.instagram.com/_dva_rain?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" class="px-6 py-2 bg-white/10 hover:bg-[#d4ff00] hover:text-black rounded-full transition-all text-xs font-bold">Instagram</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL 360 PANORAMA -->
+    <div id="panorama-overlay">
+        <button onclick="closePanorama()" class="absolute top-6 right-6 z-[10000] w-12 h-12 bg-white/20 rounded-full text-white text-2xl">×</button>
+        <div id="pano-info" class="absolute bottom-10 left-10 z-[10000] glass p-6 rounded-2xl max-w-sm">
+            <h3 id="pano-title" class="text-2xl font-bold text-[#d4ff00] mb-2">Puncak</h3>
+            <p id="pano-desc" class="text-sm text-gray-300">Deskripsi mengenai lokasi ini dan proses keterbentukannya secara geologi.</p>
+        </div>
+        <div id="pano-canvas"></div>
+    </div>
+
+    <script>
+        // --- DATA & CONFIG ---
+        const points = [
+            { name: "Puncak", lat: -5.429191, lng: 105.155359, position: { x: 0, y: 3.5, z: 0 }, desc: "Titik tertinggi Gunung Betung dengan pemandangan kawah purba." },
+            { name: "Pos 4 pendakian", lat: -5.427199, lng: 105.152394, position: { x: 2, y: 2.8, z: -1 }, desc: "Area istirahat terakhir sebelum puncak, didominasi vegetasi pegunungan." },
+            { name: "Pos 2 pendakian", lat: -5.426751, lng: 105.149670, position: { x: -2, y: 1.5, z: -2 }, desc: "Hutan lebat dengan kemiringan lereng yang cukup curam." },
+            { name: "Poin 1 (bongkah batuan beku)", lat: -5.414507, lng: 105.142130, position: { x: -5, y: 0.5, z: -4 }, desc: "Singkapan batuan beku andesit yang menunjukkan jejak aliran lava masa lalu." },
+            { name: "Pos 5 pendakian (litologi lapili)", lat: -5.428801, lng: 105.154080, position: { x: 1, y: 3.2, z: 1.5 }, desc: "Ditemukan endapan lapili hasil erupsi eksplosif." },
+            { name: "Plang arah air terjun", lat: -5.411865, lng: 105.142960, position: { x: -6, y: 0.2, z: -6 }, desc: "Persimpangan jalur menuju objek wisata air terjun." },
+            { name: "Pintu rimba", lat: -5.422473, lng: 105.142658, position: { x: -4, y: 0.8, z: -3 }, desc: "Batas antara perkebunan warga dan hutan lindung." },
+            { name: "Campground", lat: -5.421244, lng: 105.142062, position: { x: -4.5, y: 1.0, z: -3.5 }, desc: "Area datar yang luas untuk berkemah dan pengamatan bintang." },
+            { name: "Pos 1 pendakian", lat: -5.426030, lng: 105.147557, position: { x: -3, y: 1.2, z: -2 }, desc: "Gerbang awal pendakian dengan vegetasi pinus." },
+            { name: "Pos 3 pendakian (litologi tuf lapili)", lat: -5.426076, lng: 105.151551, position: { x: -1, y: 2.2, z: -1 }, desc: "Singkapan batuan tuf lapili yang rapuh dan berwarna cerah." },
+            { name: "Sungai sebelum Pos 1", lat: -5.426046, lng: 105.146570, position: { x: -3.5, y: 0.4, z: -2.5 }, desc: "Aliran sungai radial dengan air yang sangat jernih." },
+            { name: "Bongkah berkekar gerus", lat: -5.429023, lng: 105.154569, position: { x: 0.5, y: 3.1, z: 0.5 }, desc: "Struktur batuan yang pecah karena tekanan tektonik Sesar Semangko." },
+            { name: "Litologi tuf lapili", lat: -5.429023, lng: 105.154569, position: { x: 0.8, y: 3.0, z: 0.4 }, desc: "Detail tekstur abu volkanik yang membatu." },
+            { name: "Pertigaan air terjun", lat: -5.419760, lng: 105.142260, position: { x: -5.5, y: 0.3, z: -3.2 }, desc: "Titik temu berbagai aliran sungai kecil." },
+            { name: "Air terjun (litologi andesit)", lat: -5.420126, lng: 105.143527, position: { x: -5.0, y: 0.2, z: -3.5 }, desc: "Dinding terjun berupa batuan andesit masif yang tahan erosi." },
+            { name: "Pos pendaftaran", lat: -5.408159, lng: 105.143373, position: { x: -8, y: 0.1, z: -8 }, desc: "Lokasi administrasi dan perizinan masuk kawasan Tahura." }
+        ];
+
+        // --- NAVIGATION ---
+        function showPage(pageId) {
+            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
+            document.getElementById(pageId).classList.remove('hidden');
+            window.scrollTo(0, 0);
+            
+            if (pageId === 'page-3d') initThreeD();
+            
+            // Animasi navbar
+            const nav = document.getElementById('main-nav');
+            if (pageId === 'page-3d') {
+                nav.classList.add('bg-black/80', 'backdrop-blur-md');
+            } else {
+                nav.classList.remove('bg-black/80', 'backdrop-blur-md');
+            }
+        }
+
+        // --- ANIMASI GSAP (PAGE 1) ---
+        gsap.registerPlugin(ScrollTrigger);
+
+        function initAnimations() {
+            // Parallax Hero
+            gsap.to("#hero-bg", {
+                scrollTrigger: {
+                    trigger: "#hero",
+                    start: "top top",
+                    end: "bottom top",
+                    scrub: true
+                },
+                y: 200,
+                scale: 1.2
+            });
+
+            gsap.to("#hero-content", {
+                scrollTrigger: {
+                    trigger: "#hero",
+                    start: "top top",
+                    end: "center top",
+                    scrub: true
+                },
+                opacity: 0,
+                y: -100
+            });
+
+            // Section Reveal
+            document.querySelectorAll('.content-section').forEach(section => {
+                gsap.to(section, {
+                    scrollTrigger: {
+                        trigger: section,
+                        start: "top 80%",
+                    },
+                    opacity: 1,
+                    y: 0,
+                    duration: 1.5,
+                    ease: "power4.out"
+                });
+            });
+        }
+
+        // --- THREE.JS 3D VIEW (PAGE 2) ---
+        let scene, camera, renderer, controls, model;
+        let is3DInitialized = false;
+
+        function initThreeD() {
+            if (is3DInitialized) return;
+            
+            const container = document.getElementById('three-canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(15, 10, 15);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambient);
+
+            const sun = new THREE.DirectionalLight(0xffffff, 1);
+            sun.position.set(5, 10, 7);
+            scene.add(sun);
+
+            // Loader GLB
+            const loader = new THREE.GLTFLoader();
+            // Catatan: Gunakan path file betung.glb yang sesuai di repo Anda
+            loader.load('gunung_betung.glb', (gltf) => {
+                model = gltf.scene;
+                scene.add(model);
+                createHotspots();
+            }, undefined, (e) => console.error("Error loading 3D:", e));
+
+            animate();
+            is3DInitialized = true;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls) controls.update();
+            updateHotspotPositions();
+            if (renderer) renderer.render(scene, camera);
+        }
+
+        function createHotspots() {
+            const container = document.getElementById('viewer-container');
+            points.forEach((pt, index) => {
+                const el = document.createElement('div');
+                el.className = 'hotspot';
+                el.id = `hotspot-${index}`;
+                el.innerHTML = `<div class="hotspot-label">${pt.name}</div>`;
+                el.onclick = () => openPanorama(pt);
+                container.appendChild(el);
+            });
+        }
+
+        function updateHotspotPositions() {
+            if (!model) return;
+            points.forEach((pt, index) => {
+                const vector = new THREE.Vector3(pt.position.x, pt.position.y, pt.position.z);
+                vector.project(camera);
+
+                const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                const y = -(vector.y * 0.5 - 0.5) * window.innerHeight;
+
+                const el = document.getElementById(`hotspot-${index}`);
+                if (vector.z < 1) {
+                    el.style.display = 'block';
+                    el.style.left = `${x}px`;
+                    el.style.top = `${y}px`;
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+        }
+
+        function set3DMode(mode) {
+            document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
+            
+            const legenda = document.getElementById('legenda-container');
+            if (mode === 'geologi') legenda.classList.remove('hidden');
+            else legenda.classList.add('hidden');
+
+            // Logika penggantian tekstur pada model 3D
+            if (model) {
+                model.traverse(node => {
+                    if (node.isMesh) {
+                        // Di sini Anda mengganti map tekstur berdasarkan mode
+                        // node.material.map = textureLoader.load(`${mode}_texture.png`);
+                    }
+                });
+            }
+        }
+
+        // --- 360 VIEWER ---
+        let panoScene, panoCamera, panoRenderer, panoControls;
+
+        function openPanorama(point) {
+            const overlay = document.getElementById('panorama-overlay');
+            overlay.style.display = 'block';
+            document.getElementById('pano-title').innerText = point.name;
+            document.getElementById('pano-desc').innerText = point.desc;
+
+            initPano(point.name.replace(/\s+/g, '_').toLowerCase());
+        }
+
+        function initPano(fileName) {
+            const container = document.getElementById('pano-canvas');
+            container.innerHTML = '';
+            
+            panoScene = new THREE.Scene();
+            panoCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            panoRenderer = new THREE.WebGLRenderer();
+            panoRenderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(panoRenderer.domElement);
+
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1);
+
+            const texture = new THREE.TextureLoader().load(`360_${fileName}.png`);
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const mesh = new THREE.Mesh(geometry, material);
+            panoScene.add(mesh);
+
+            panoControls = new THREE.OrbitControls(panoCamera, panoRenderer.domElement);
+            panoControls.enableZoom = false;
+            panoControls.enablePan = false;
+            panoCamera.position.set(0, 0, 0.1);
+
+            function panoAnimate() {
+                if (document.getElementById('panorama-overlay').style.display === 'none') return;
+                requestAnimationFrame(panoAnimate);
+                panoControls.update();
+                panoRenderer.render(panoScene, panoCamera);
+            }
+            panoAnimate();
+        }
+
+        function closePanorama() {
+            document.getElementById('panorama-overlay').style.display = 'none';
+        }
+
+        window.onload = () => {
+            initAnimations();
+            // Handle resize
+            window.addEventListener('resize', () => {
+                if (is3DInitialized) {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                }
+            });
+        };
+    </script>
+</body>
+</html>
